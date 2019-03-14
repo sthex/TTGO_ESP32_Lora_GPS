@@ -1,9 +1,7 @@
-//https://github.com/LilyGO/TTGO-LORA32-V2.0
-#include <SPI.h>
+#include <SPI.h>		// Serial communication used by Lora
 #include <LoRa.h>
-#include <Wire.h>  
-#include <SSD1306.h>
-
+#include <Wire.h>		
+#include <SSD1306.h>	// OLED display
 #include <TinyGPS++.h>  // http://arduiniana.org/libraries/tinygpsplus/
 
 //GPIO34-39 can only be set as input mode and do not have software pullup or pulldown 
@@ -83,7 +81,6 @@ void setup() {
 	LoRa.setSyncWord(0xF3);           // ranges from 0-0xFF, default 0x34, see API docs
 	Serial.println("LoRa init succeeded.");
 
-	Serial.println("init ok");
 	display.init();
 	display.flipScreenVertically();
 	display.setFont(ArialMT_Plain_16);
@@ -91,21 +88,14 @@ void setup() {
 	display.drawString(0, 20, "LoRa Duplex GPS");
 	display.display();
 
-
-	//setupTime();
-	//delay(1000);
-
 	Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
-	Serial.println("Serial Txd is on pin: " + String(TXD2));
-	Serial.println("Serial Rxd is on pin: " + String(RXD2));
-
 }
 
 void loop() {
 	while (Serial2.available()) {
 		//Serial.print(char(Serial2.read()));
 		if (gps.encode(Serial2.read()))
-			;// displayInfo();
+			;// debugInfo();
 	}
 
 	if (digitalRead(BTN_PRESS) == HIGH)
@@ -155,10 +145,12 @@ void loop() {
 
 	if (millis() - lastSendTime > interval) {
 		if (messageOut.startsWith("OK"))
-		{
+		{  
+			// Send this ackowledge message to other Lora unit
 		}
 		else if (requestSleep >= 0)
 		{
+			// send command 'sleep<Min>' to other Lora unit 
 			messageOut = "sleep";
 			messageOut += String(requestSleep);
 		}
@@ -198,7 +190,7 @@ void loop() {
 	onLoraReceive(LoRa.parsePacket());
 	delay(10);
 }
-void displayInfo()
+void debugInfo()
 {
 	Serial.print(F("Location: "));
 	if (gps.location.isValid())
@@ -269,7 +261,7 @@ void sendMessage(String outgoing) {
 
 void onLoraReceive(int packetSize) {
 	if (packetSize == 0) return;          // if there's no packet, return
-	//digitalWrite(2, HIGH);				  // turn the LED on (HIGH is the voltage level)
+	digitalWrite(2, HIGH);				  // turn the LED on (HIGH is the voltage level)
 	if (packetSize > 30)
 		Serial.println("RECEIVED UNKNOWN MESSAGE! Lenght=" + String(packetSize) + ":");
 
@@ -294,23 +286,15 @@ void onLoraReceive(int packetSize) {
 		int minutes = incoming.substring(5).toInt();
 		if (minutes >= 0 && minutes <= 60 * 12)
 		{
-			Serial.print(minutes);
-			Serial.println(" minutes");
-
 			minutesToSleep = minutes;
-			display.clear();
-			display.setTextAlignment(TEXT_ALIGN_LEFT);
-			display.setFont(ArialMT_Plain_16);
-			display.drawString(0, 20, "Set sleep");
-			display.drawString(0, 20, String(minutes));
-			messageOut = "OK sleep";               // Confirm
+			messageOut = "OK sleep";               // Confirm in next tranmit
 		}
 	}
 	UpdateOLED();
 	Serial.println("RSSI: " + String(lastRSSI));
 	Serial.println("Snr: " + String(LoRa.packetSnr()));
 	Serial.println();
-	//digitalWrite(2, LOW);
+	digitalWrite(2, LOW);
 }
 String DistanceFrom(String inp)
 {
@@ -358,7 +342,7 @@ void UpdateOLED(void)
 			gps.date.day(), gps.date.month(),
 			gps.time.hour(), gps.time.minute(), gps.time.second()
 		);
-		display.drawString(0, 10, time_buf);
+		display.drawString(0, 0, time_buf);
 	}
 	else
 	{

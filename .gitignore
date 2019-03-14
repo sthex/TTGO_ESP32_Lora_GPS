@@ -33,3 +33,5 @@
 /Debug
 /__vm
 *.user
+/Release
+.vs
